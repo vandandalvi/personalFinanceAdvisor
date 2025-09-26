@@ -221,21 +221,84 @@ def upload_csv():
     file = request.files.get("file")
     if file is None:
         return jsonify({"message": "No file provided"}), 400
-    transactions_df = pd.read_csv(file)
-    transactions_df = _normalize_columns(transactions_df)
-    # Convert each row to text for LLM context (best-effort if columns present)
-    def row_to_text(row):
-        date = row["Date"] if "Date" in row and pd.notna(row["Date"]) else "?"
-        amount = row["Amount"] if "Amount" in row and pd.notna(row["Amount"]) else "?"
-        category = row["Category"] if "Category" in row and pd.notna(row["Category"]) else "?"
-        desc = row["Description"] if "Description" in row and pd.notna(row["Description"]) else ""
-        return f"On {date} you spent {amount} on {category}: {desc}"
+    
     try:
-        csv_text = "\n".join(transactions_df.apply(row_to_text, axis=1))
-    except Exception:
-        # Fallback to raw CSV text
-        csv_text = transactions_df.to_csv(index=False)
-    return jsonify({"message": "CSV uploaded successfully!", "columns": list(transactions_df.columns)})
+        transactions_df = pd.read_csv(file)
+        print(f"Original CSV shape: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+        transactions_df = _normalize_columns(transactions_df)
+        print(f"After normalization: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+        
+        # Convert each row to text for LLM context (best-effort if columns present)
+        def row_to_text(row):
+            date = row["Date"] if "Date" in row and pd.notna(row["Date"]) else "?"
+            amount = row["Amount"] if "Amount" in row and pd.notna(row["Amount"]) else "?"
+            category = row["Category"] if "Category" in row and pd.notna(row["Category"]) else "?"
+            desc = row["Description"] if "Description" in row and pd.notna(row["Description"]) else ""
+            return f"On {date} you spent {amount} on {category}: {desc}"
+        
+        try:
+            csv_text = "\n".join(transactions_df.apply(row_to_text, axis=1))
+            print(f"CSV text length: {len(csv_text)} chars")
+        except Exception as e:
+            print(f"Error creating CSV text: {e}")
+            # Fallback to raw CSV text
+            csv_text = transactions_df.to_csv(index=False)
+        
+        print("CSV upload successful!")
+        return jsonify({"message": "CSV uploaded successfully!", "columns": list(transactions_df.columns)})
+    except Exception as e:
+        print(f"CSV upload error: {e}")
+        return jsonify({"message": f"Error processing CSV: {str(e)}"}), 400
+
+@app.route("/dashboard", methods=["POST"])
+def dashboard():
+    global transactions_df
+    print(f"Dashboard called. transactions_df is None: {transactions_df is None}")
+    if transactions_df is None:
+        print("No transactions_df found")
+        return jsonify({"error": "No data found. Please upload a CSV first."}), 400
+    
+    if transactions_df.empty:
+        print("transactions_df is empty")
+        return jsonify({"error": "No data found. Please upload a CSV first."}), 400
+    
+    df = _normalize_columns(transactions_df.copy())
+    print(f"DataFrame shape: {df.shape}, columns: {df.columns.tolist()}")
+    
+    # Calculate dashboard statistics
+    dashboard_data = {
+        "totalSpending": float(abs(df["Amount"].sum())) if "Amount" in df.columns else 0,
+        "totalTransactions": len(df),
+        "totalCategories": df["Category"].nunique() if "Category" in df.columns else 0,
+        "avgTransaction": float(abs(df["Amount"].mean())) if "Amount" in df.columns else 0,
+    }
+    
+    # Category breakdown
+    if "Category" in df.columns and "Amount" in df.columns:
+        category_totals = df.groupby("Category")["Amount"].sum().sort_values(ascending=False)
+        dashboard_data["categories"] = [
+            {"category": cat, "total": float(total)} 
+            for cat, total in category_totals.head(10).items()
+        ]
+    
+    # Monthly spending (if Date column exists)
+    if "Date" in df.columns and "Amount" in df.columns:
+        df["Month"] = df["Date"].dt.strftime("%Y-%m")
+        monthly_totals = df.groupby("Month")["Amount"].sum().sort_index()
+        dashboard_data["monthly"] = [
+            {"month": month, "total": float(total)} 
+            for month, total in monthly_totals.items()
+        ]
+    
+    # Top merchants
+    if "Description" in df.columns and "Amount" in df.columns:
+        merchant_totals = df.groupby("Description")["Amount"].sum().sort_values(ascending=False)
+        dashboard_data["topMerchants"] = [
+            {"merchant": merchant, "total": float(total)} 
+            for merchant, total in merchant_totals.head(8).items()
+        ]
+    
+    return jsonify(dashboard_data)
 
 @app.route("/chat", methods=["POST"])
 def chat():
