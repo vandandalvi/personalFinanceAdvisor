@@ -1,8 +1,16 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://your-backend-app.onrender.com/$1"
+      "source": "/upload",
+      "destination": "https://your-backend-app.onrender.com/upload"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "https://your-backend-app.onrender.com/dashboard"
+    },
+    {
+      "source": "/chat",
+      "destination": "https://your-backend-app.onrender.com/chat"
     },
     {
       "source": "/(.*)",
