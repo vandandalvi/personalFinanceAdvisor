@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/upload",
-      "destination": "https://your-backend-app.onrender.com/upload"
+      "destination": "https://personalfinancemanager-4jzy.onrender.com/upload"
     },
     {
       "source": "/dashboard",
-      "destination": "https://your-backend-app.onrender.com/dashboard"
+      "destination": "https://personalfinancemanager-4jzy.onrender.com/dashboard"
     },
     {
       "source": "/chat",
-      "destination": "https://your-backend-app.onrender.com/chat"
+      "destination": "https://personalfinancemanager-4jzy.onrender.com/chat"
     },
     {
       "source": "/(.*)",

@@ -11,8 +11,9 @@ app = Flask(__name__)
 # Allow requests from Vite dev server and production frontend
 CORS(app, origins=[
     "http://localhost:5173",  # Local development
+    "http://localhost:5174",  # Local development (alternate port)
     "https://*.vercel.app",   # Vercel deployment
-    "https://your-app-name.vercel.app"  # Replace with your actual Vercel URL
+    "https://vandansfinancemanager.vercel.app"  # Your actual Vercel URL
 ])
 
 # Configure Gemini directly
