@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../config/api';
 
 function UploadPage() {
   const [file, setFile] = useState(null);
@@ -20,7 +21,7 @@ function UploadPage() {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('/upload', formData, {
+      const response = await axios.post(API_ENDPOINTS.upload, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       console.log('Upload success:', response.data);

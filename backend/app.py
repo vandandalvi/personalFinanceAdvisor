@@ -3,67 +3,56 @@ from flask_cors import CORS
 import pandas as pd
 import os
 from dotenv import load_dotenv
-from openai import OpenAI  # Use OpenAI client against Gemini's OpenAI-compatible endpoint
+import google.generativeai as genai
 
 load_dotenv()  # load environment variables from .env
 
 app = Flask(__name__)
-# Allow requests from Vite dev server
-CORS(app)
+# Allow requests from Vite dev server and production frontend
+CORS(app, origins=[
+    "http://localhost:5173",  # Local development
+    "https://*.vercel.app",   # Vercel deployment
+    "https://your-app-name.vercel.app"  # Replace with your actual Vercel URL
+])
 
-# Configure Gemini via OpenAI-compatible endpoint
+# Configure Gemini directly
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-OPENAI_COMPAT_BASE_URL = os.getenv(
-    "OPENAI_COMPAT_BASE_URL",
-    "https://generativelanguage.googleapis.com/v1beta/openai/",
-)
-client = None
 if GEMINI_API_KEY:
-    client = OpenAI(base_url=OPENAI_COMPAT_BASE_URL, api_key=GEMINI_API_KEY)
-
+    genai.configure(api_key=GEMINI_API_KEY)
+    
 # Answer mode: "ai-only" (default) always uses Gemini; "hybrid" tries rules then falls back to Gemini
 ANSWER_MODE = os.getenv("ANSWER_MODE", "ai-only").strip().lower()
 CSV_CONTEXT_MAX_CHARS = int(os.getenv("CSV_CONTEXT_MAX_CHARS", "120000"))
 
 
 def _llm_chat(prompt: str):
-    """Call Gemini via OpenAI-compatible API with resilient model selection.
+    """Call Gemini API directly.
     Returns (answer, meta) or raises an Exception with the last error.
     """
-    if client is None:
+    if not GEMINI_API_KEY:
         raise RuntimeError("LLM client not configured")
 
-    # Respect explicit env model first, then try a list of known-good aliases
-    candidates = []
-    env_model = os.getenv("GEMINI_MODEL")
-    if env_model:
-        candidates.append(env_model)
-    candidates += [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-8b",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-pro",
+    # Try different Gemini models with correct identifiers (based on actual available models)
+    candidates = [
+        "models/gemini-2.5-flash",
+        "models/gemini-2.0-flash",
+        "models/gemini-flash-latest",
+        "models/gemini-2.5-pro",
+        "models/gemini-2.0-flash-exp",
+        "models/gemini-pro-latest",
     ]
 
     last_err = None
-    for model in candidates:
+    for model_name in candidates:
         try:
-            completion = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": "You are a helpful personal finance assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0,
-            )
-            answer = completion.choices[0].message.content
-            return answer, {"model": model}
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            return response.text, {"model": model_name}
         except Exception as e:
             msg = str(e)
             last_err = msg
             # If it's a NOT_FOUND/404 for a given model, try the next
-            if "404" in msg or "NOT_FOUND" in msg or "was not found" in msg:
+            if "404" in msg or "NOT_FOUND" in msg or "was not found" in msg or "not found" in msg:
                 continue
             # other errors should stop the loop
             break
@@ -314,7 +303,7 @@ def chat():
 
     # If AI-only mode, always call Gemini with the CSV context
     if ANSWER_MODE == "ai-only":
-        if client is None:
+        if not GEMINI_API_KEY:
             return jsonify({
                 "response": (
                     "AI is not configured yet. Add GEMINI_API_KEY in backend/.env to enable AI answers.\n"
@@ -354,10 +343,11 @@ Question:
 
         try:
             # Add a system message to enforce style
-            system_message = (
+            system_prompt = (
                 "You are a helpful, concise personal finance chat agent. Reply in 2-3 short, plain sentences, spaced like a real chat. Never use Markdown, never use bullet points, never use headings, never use lists, never use bold or italics. No long answers. IMPORTANT: All amounts are in Indian Rupees (INR) - always use Rs or ₹ symbol, never dollars ($)."
             )
-            answer, meta = _llm_chat(prompt.replace("You are a personal finance chat agent.", system_message))
+            full_prompt = system_prompt + "\n\n" + prompt
+            answer, meta = _llm_chat(full_prompt)
             # Post-process: remove Markdown, lists, and enforce chat-style spacing
             import re
             def clean_answer(text):
@@ -461,7 +451,7 @@ Answer the following question based on this data:
 {user_query}
 """
 
-    if client is None:
+    if not GEMINI_API_KEY:
         # Friendly 200 response so the frontend can show it in chat without error handling
         return jsonify({
             "response": (
@@ -482,7 +472,8 @@ Answer the following question based on this data:
 
 
 if __name__ == "__main__":
-    url = "http://127.0.0.1:5000"
+    port = int(os.environ.get("PORT", 5000))
+    url = f"http://0.0.0.0:{port}"
     print(f"Starting Flask server at {url}")
-    # Avoid reloader so the process stays attached to the current terminal
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    # Use gunicorn in production, simple server for development
+    app.run(host="0.0.0.0", port=port, debug=False)

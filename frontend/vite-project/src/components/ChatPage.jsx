@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../config/api';
 
 function ChatPage() {
   const [messages, setMessages] = useState([
@@ -35,7 +36,7 @@ function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('/chat', {
+      const response = await axios.post(API_ENDPOINTS.chat, {
         query: inputValue
       });
 

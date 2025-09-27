@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend, LineElement, PointElement } from 'chart.js';
 import { Bar, Pie, Line } from 'react-chartjs-2';
+import { API_ENDPOINTS } from '../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend, LineElement, PointElement);
 
@@ -19,7 +20,7 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await axios.post('/dashboard');
+      const response = await axios.post(API_ENDPOINTS.dashboard);
       setData(response.data);
     } catch (error) {
       console.error('Dashboard data error:', error);
@@ -35,7 +36,7 @@ function Dashboard() {
 
   const fetchAiSuggestions = async () => {
     try {
-      const response = await axios.post('/chat', {
+      const response = await axios.post(API_ENDPOINTS.chat, {
         query: 'Give me 3 quick insights about my spending patterns and top saving opportunities'
       });
       setAiSuggestions(response.data.response);
