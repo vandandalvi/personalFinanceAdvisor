@@ -1,9 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_BASE_URL from '../config/api';
 import './WelcomePage.css';
 
 const WelcomePage = () => {
   const navigate = useNavigate();
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking', 'waking', 'ready'
+
+  // Wake up the backend when component mounts
+  useEffect(() => {
+    const wakeUpBackend = async () => {
+      try {
+        console.log('Pinging backend to wake up Render free tier...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        const response = await fetch(API_BASE_URL, {
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          console.log('Backend is awake and ready!');
+          setBackendStatus('ready');
+        } else {
+          console.log('Backend responding but with error');
+          setBackendStatus('waking');
+        }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('Backend is waking up (this can take 30-60 seconds on free tier)');
+          setBackendStatus('waking');
+        } else {
+          console.log('Backend ping error:', error);
+          setBackendStatus('waking');
+        }
+      }
+    };
+
+    wakeUpBackend();
+  }, []);
 
   const handleGetStarted = () => {
     navigate('/upload');
@@ -45,6 +83,19 @@ const WelcomePage = () => {
             Take control of your finances with intelligent insights, automated categorization, 
             and AI-powered analysis. Upload your bank statements and get instant visibility.
           </p>
+          
+          {/* Backend Status Indicator */}
+          {backendStatus !== 'ready' && (
+            <div className="backend-status">
+              <div className="status-indicator">
+                <span className={`status-dot ${backendStatus === 'waking' ? 'pulsing' : ''}`}></span>
+                <span className="status-text">
+                  {backendStatus === 'checking' ? 'Connecting to server...' : 'Waking up backend (30-60s on free tier)...'}
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="hero-buttons">
             <button className="btn-primary" onClick={handleGetStarted}>
               <span>Get Started</span>
