@@ -670,6 +670,9 @@ def chat():
             truncated = True
 
         helper = _summaries_for_llm(df) if _savings_intent(user_query) else ""
+        helper_text = f"Helper summaries:\n{helper}" if helper else ""
+        truncation_note = " [TRUNCATED]" if truncated else ""
+        
         prompt = f"""
 You are a personal finance chat agent. Always reply in 2-3 short, plain sentences, spaced like a real chat. Never use Markdown, never use bullet points, never use headings, never use lists, never use bold or italics. Do not summarize categories or give long explanations.
 
@@ -680,11 +683,11 @@ For each suggestion, mention the merchant/item, the amount spent in Rs, and if i
 Give a concrete, actionable suggestion for each, like 'You can save by switching to regular coffee.'
 If there is nothing to cut, say 'Your spending looks reasonable.'
 
-Data (one line per transaction){' [TRUNCATED]' if truncated else ''}:
+Data (one line per transaction){truncation_note}:
 
 {context_text}
 
-{'Helper summaries:\n' + helper if helper else ''}
+{helper_text}
 
 Question:
 {user_query}
