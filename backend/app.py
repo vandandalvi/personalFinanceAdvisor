@@ -1,27 +1,28 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
+import numpy as np
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+import statistics
 
-load_dotenv()  # load environment variables from .env
+load_dotenv() 
 
 app = Flask(__name__)
-# Allow requests from Vite dev server and production frontend
 CORS(app, origins=[
-    "http://localhost:5173",  # Local development
-    "http://localhost:5174",  # Local development (alternate port)
-    "https://*.vercel.app",   # Vercel deployment
-    "https://vandansfinancemanager.vercel.app"  # Your actual Vercel URL
-])
+    "http://localhost:5173",  
+    "http://localhost:5174",  
+    "https://*.vercel.app",
+    "https://vandansfinancemanager.vercel.app",
+    "https://your-app-name.vercel.app"  # Update with your actual Vercel URL
+], supports_credentials=True)
 
-# Configure Gemini directly
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    
-# Answer mode: "ai-only" (default) always uses Gemini; "hybrid" tries rules then falls back to Gemini
+
 ANSWER_MODE = os.getenv("ANSWER_MODE", "ai-only").strip().lower()
 CSV_CONTEXT_MAX_CHARS = int(os.getenv("CSV_CONTEXT_MAX_CHARS", "120000"))
 
@@ -174,6 +175,330 @@ transactions_df = None
 csv_text = ""
 
 
+def _normalize_columns_bank_specific(df: pd.DataFrame, bank: str) -> pd.DataFrame:
+    """Bank-specific column normalization and data processing."""
+    if df is None or df.empty:
+        return df
+    
+    print(f"Processing {bank} format. Original columns: {df.columns.tolist()}")
+    
+    if bank == 'sbi':
+        return _process_sbi_format(df)
+    elif bank == 'kotak':
+        return _process_kotak_format(df)
+    elif bank == 'axis':
+        return _process_axis_format(df)
+    else:
+        # Fallback to generic normalization
+        return _normalize_columns(df)
+
+def _process_sbi_format(df: pd.DataFrame) -> pd.DataFrame:
+    """Process SBI bank statement format."""
+    # SBI columns: Txn Date, Value Date, Description, Ref No./Cheque No., Debit, Credit, Balance
+    mapping = {}
+    for col in df.columns:
+        lc = str(col).strip().lower()
+        if 'txn date' in lc or 'transaction date' in lc:
+            mapping[col] = "Date"
+        elif 'description' in lc or 'particulars' in lc:
+            mapping[col] = "Description"
+        elif 'debit' in lc:
+            mapping[col] = "Debit"
+        elif 'credit' in lc:
+            mapping[col] = "Credit"
+    
+    if mapping:
+        df = df.rename(columns=mapping)
+    
+    # Process SBI amounts - handle empty strings and combine Debit and Credit
+    if "Debit" in df.columns and "Credit" in df.columns:
+        # Replace empty strings with 0
+        df["Debit"] = df["Debit"].replace('', 0)
+        df["Credit"] = df["Credit"].replace('', 0)
+        df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
+        df["Credit"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0)
+        # Expenses are debits (negative), income is credits (positive)
+        df["Amount"] = df["Credit"] - df["Debit"]
+    
+    # Clean and categorize SBI descriptions
+    if "Description" in df.columns:
+        df["Category"] = df["Description"].apply(_categorize_sbi_transaction)
+        df["Description"] = df["Description"].apply(_clean_sbi_description)
+    
+    # Process dates - handle SBI date format like "1 Jan 2024"
+    if "Date" in df.columns:
+        try:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce", format='%d %b %Y')
+        except:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    
+    return df
+
+def _process_kotak_format(df: pd.DataFrame) -> pd.DataFrame:
+    """Process Kotak bank statement format."""
+    # Kotak columns: Date, Particulars, Debit, Credit, Balance
+    mapping = {}
+    for col in df.columns:
+        lc = str(col).strip().lower()
+        if 'date' in lc:
+            mapping[col] = "Date"
+        elif 'particulars' in lc or 'description' in lc or 'narration' in lc:
+            mapping[col] = "Description"
+        elif 'debit' in lc or 'withdrawal' in lc:
+            mapping[col] = "Debit"
+        elif 'credit' in lc or 'deposit' in lc:
+            mapping[col] = "Credit"
+    
+    if mapping:
+        df = df.rename(columns=mapping)
+    
+    # Process Kotak amounts - handle empty strings
+    if "Debit" in df.columns and "Credit" in df.columns:
+        df["Debit"] = df["Debit"].replace('', 0)
+        df["Credit"] = df["Credit"].replace('', 0)
+        df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
+        df["Credit"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0)
+        df["Amount"] = df["Credit"] - df["Debit"]
+    
+    # Clean and categorize Kotak descriptions
+    if "Description" in df.columns:
+        print(f"Categorizing {len(df)} Kotak transactions...")
+        df["Category"] = df["Description"].apply(_categorize_kotak_transaction)
+        # Debug: print investment transactions
+        investment_txns = df[df["Category"] == "Investment"]
+        if not investment_txns.empty:
+            print(f"Found {len(investment_txns)} Investment transactions:")
+            for idx, row in investment_txns.iterrows():
+                print(f"  - {row['Description']} -> {row['Category']}")
+        df["Description"] = df["Description"].apply(_clean_kotak_description)
+    
+    # Process dates - handle Kotak date format like "01/01/2024"
+    if "Date" in df.columns:
+        try:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce", format='%d/%m/%Y')
+        except:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    
+    return df
+
+def _process_axis_format(df: pd.DataFrame) -> pd.DataFrame:
+    """Process Axis bank statement format."""
+    # Axis columns: Tran Date, Description, Chq/Ref Number, Value Dt, Withdrawal Amt, Deposit Amt, Closing Balance
+    mapping = {}
+    for col in df.columns:
+        lc = str(col).strip().lower()
+        if 'tran date' in lc or 'transaction date' in lc or 'date' in lc:
+            mapping[col] = "Date"
+        elif 'description' in lc or 'particulars' in lc:
+            mapping[col] = "Description"
+        elif 'withdrawal' in lc or 'debit' in lc:
+            mapping[col] = "Debit"
+        elif 'deposit' in lc or 'credit' in lc:
+            mapping[col] = "Credit"
+    
+    if mapping:
+        df = df.rename(columns=mapping)
+    
+    # Process Axis amounts - handle empty strings
+    if "Debit" in df.columns and "Credit" in df.columns:
+        df["Debit"] = df["Debit"].replace('', 0)
+        df["Credit"] = df["Credit"].replace('', 0)
+        df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
+        df["Credit"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0)
+        df["Amount"] = df["Credit"] - df["Debit"]
+    
+    # Clean and categorize Axis descriptions
+    if "Description" in df.columns:
+        df["Category"] = df["Description"].apply(_categorize_axis_transaction)
+        df["Description"] = df["Description"].apply(_clean_axis_description)
+    
+    # Process dates - handle Axis date format like "01/01/2024"
+    if "Date" in df.columns:
+        try:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce", format='%d/%m/%Y')
+        except:
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    
+    return df
+
+def _categorize_sbi_transaction(description: str) -> str:
+    """Categorize SBI transactions based on description patterns."""
+    if pd.isna(description):
+        return "Other"
+    
+    desc = str(description).upper()
+    
+    # Investment - Stocks, Mutual Funds, Trading
+    if any(keyword in desc for keyword in ['UPSTOX', 'INDIAN CLEARING', 'ZERODHA', 'GROWW', 'MUTUAL FUND', 'STOCK', 'TRADING', 'INVESTMENT', 'DEMAT', 'CLEARING']):
+        return "Investment"
+    
+    # Credit Card Payments
+    elif any(keyword in desc for keyword in ['CRED', 'CREDIT CARD', 'CC PAYMENT', 'CARD PAYMENT']):
+        return "Credit Card"
+    
+    # UPI Food Services
+    elif any(keyword in desc for keyword in ['SWIGGY', 'ZOMATO', 'FOOD', 'RESTAURANT', 'CAFE', 'PIZZA', 'DOMINOS', 'KFC', 'MCDONALD', 'BURGER']):
+        return "Food & Dining"
+    
+    # Transportation - includes Metro
+    elif any(keyword in desc for keyword in ['UBER', 'OLA', 'METRO', 'PETROL', 'FUEL', 'TRANSPORT', 'CAB', 'RAPIDO', 'BPCL', 'HP', 'IOCL', 'MUMBAI METRO']):
+        return "Transportation"
+    
+    # Shopping
+    elif any(keyword in desc for keyword in ['AMAZON', 'FLIPKART', 'SHOPPING', 'MYNTRA', 'AJIO', 'MEESHO', 'PAYTM MALL']):
+        return "Shopping"
+    
+    # Entertainment & Subscriptions
+    elif any(keyword in desc for keyword in ['NETFLIX', 'SPOTIFY', 'MOVIE', 'BOOKMYSHOW', 'PRIME', 'HOTSTAR', 'YOUTUBE', 'DISNEY']):
+        return "Entertainment"
+    
+    # Utilities & Bills
+    elif any(keyword in desc for keyword in ['ELECTRICITY', 'MOBILE', 'RECHARGE', 'BILL', 'AIRTEL', 'JIO', 'VODAFONE', 'BSNL']):
+        return "Utilities"
+    
+    # ATM/Cash Withdrawals
+    elif any(keyword in desc for keyword in ['ATM', 'CASH', 'WDL', 'WITHDRAWAL']):
+        return "Cash Withdrawal"
+    
+    # Money Transfers
+    elif any(keyword in desc for keyword in ['TRANSFER', 'NEFT', 'IMPS', 'UPI/DR', 'UPI/CR']):
+        return "Money Transfer"
+    
+    # Income & Credits
+    elif any(keyword in desc for keyword in ['SALARY', 'CREDIT INTEREST', 'DIVIDEND', 'NEFT INWARD', 'RTGS']):
+        return "Income"
+    
+    # Banking Charges
+    elif any(keyword in desc for keyword in ['AMC', 'CHARGES', 'FEE', 'PENALTY']):
+        return "Bank Charges"
+    
+    # If no recognizable pattern found, categorize as Other
+    else:
+        return "Other"
+
+def _categorize_kotak_transaction(description: str) -> str:
+    """Categorize Kotak transactions - similar logic to SBI."""
+    return _categorize_sbi_transaction(description)  # Similar patterns
+
+def _categorize_axis_transaction(description: str) -> str:
+    """Categorize Axis transactions - similar logic to SBI."""
+    return _categorize_sbi_transaction(description)  # Similar patterns
+
+def _clean_sbi_description(description: str) -> str:
+    """Clean SBI transaction descriptions for better readability."""
+    if pd.isna(description):
+        return "Unknown Transaction"
+    
+    desc = str(description).strip()
+    
+    # Clean UPI transactions - extract merchant names
+    if "UPI/DR" in desc or "UPI/CR" in desc:
+        # Extract merchant from UPI patterns like "BY TRANSFER-UPI/DR/400252792161/MAHAB"
+        parts = desc.split("/")
+        if len(parts) >= 4:
+            merchant = parts[-1]  # Last part is usually merchant
+            if merchant and len(merchant) > 2:
+                return f"UPI Payment - {merchant.title()}"
+        return "UPI Payment"
+    
+    # Clean transfer descriptions
+    elif "BY TRANSFER" in desc:
+        if "MAHAB" in desc:
+            return "Money Transfer"
+        return "Bank Transfer"
+    
+    elif "TO TRANSFER" in desc:
+        if "Hamara" in desc:
+            return "Payment to Hamara"
+        elif "SONU" in desc:
+            return "Payment to Contact"
+        return "Money Transfer"
+    
+    # Clean AMC and charges
+    elif "AMC" in desc:
+        return "Annual Maintenance Charge"
+    
+    elif "ECS/ACH RETURN" in desc:
+        return "ECS Return Charges"
+    
+    # NEFT transactions
+    elif "NEFT" in desc:
+        if "SALARY" in desc:
+            return "Salary Credit"
+        return "NEFT Transfer"
+    
+    # ATM transactions
+    elif "ATM" in desc and "WDL" in desc:
+        return "ATM Cash Withdrawal"
+    
+    # Return cleaned description (first 40 characters)
+    return desc[:40] + "..." if len(desc) > 40 else desc
+
+def _clean_kotak_description(description: str) -> str:
+    """Clean Kotak transaction descriptions."""
+    if pd.isna(description):
+        return "Unknown Transaction"
+    
+    desc = str(description).strip()
+    
+    # Clean UPI transactions
+    if "UPI/" in desc:
+        parts = desc.split("/")
+        if len(parts) >= 2:
+            merchant = parts[1]  # Second part is usually merchant
+            if merchant:
+                return f"UPI - {merchant.title()}"
+        return "UPI Payment"
+    
+    # Clean IMPS transactions
+    elif "IMPS/" in desc:
+        if "AMAZON" in desc:
+            return "IMPS - Amazon"
+        return "IMPS Transfer"
+    
+    # ATM withdrawals
+    elif "ATM" in desc:
+        return "ATM Cash Withdrawal"
+    
+    # NEFT salary
+    elif "SALARY" in desc and "NEFT" in desc:
+        return "Salary Credit"
+    
+    # Mobile recharge
+    elif "MOBILE RECHARGE" in desc:
+        return "Mobile Recharge"
+    
+    return desc[:40] + "..." if len(desc) > 40 else desc
+
+def _clean_axis_description(description: str) -> str:
+    """Clean Axis transaction descriptions."""
+    if pd.isna(description):
+        return "Unknown Transaction"
+    
+    desc = str(description).strip()
+    
+    # Clean UPI transactions - Axis format: "UPI-SWIGGY-FOOD DELIVERY-123456789"
+    if "UPI-" in desc:
+        parts = desc.split("-")
+        if len(parts) >= 2:
+            merchant = parts[1]  # Second part is merchant
+            service = parts[2] if len(parts) > 2 else ""
+            if merchant:
+                return f"UPI - {merchant.title()}"
+        return "UPI Payment"
+    
+    # NEFT transactions
+    elif "NEFT-" in desc:
+        if "SALARY" in desc:
+            return "Salary Credit"
+        return "NEFT Transfer"
+    
+    # ATM transactions
+    elif "ATM-" in desc:
+        return "ATM Cash Withdrawal"
+    
+    return desc[:40] + "..." if len(desc) > 40 else desc
+
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Rename columns to standard names: Date, Description, Category, Amount (case-insensitive)."""
     if df is None or df.empty:
@@ -191,10 +516,10 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
             mapping[col] = "Amount"
     if mapping:
         df = df.rename(columns=mapping)
-    # Coerce types if present
-    if "Amount" in df.columns:
+    # Coerce types if present - but only if not already processed
+    if "Amount" in df.columns and df["Amount"].dtype == 'object':
         df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
-    if "Date" in df.columns:
+    if "Date" in df.columns and not pd.api.types.is_datetime64_any_dtype(df["Date"]):
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     if "Category" in df.columns:
         df["Category"] = df["Category"].astype(str)
@@ -209,14 +534,33 @@ def health():
 def upload_csv():
     global transactions_df, csv_text
     file = request.files.get("file")
+    bank = request.form.get("bank", "").lower()
+    
     if file is None:
         return jsonify({"message": "No file provided"}), 400
+    
+    if not bank:
+        return jsonify({"message": "Bank selection required"}), 400
     
     try:
         transactions_df = pd.read_csv(file)
         print(f"Original CSV shape: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
-        transactions_df = _normalize_columns(transactions_df)
-        print(f"After normalization: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+        print(f"Processing as {bank.upper()} format")
+        
+        # Use bank-specific processing
+        transactions_df = _normalize_columns_bank_specific(transactions_df, bank)
+        print(f"After {bank} normalization: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+        
+        # Filter out rows with invalid amounts or dates
+        if "Amount" in transactions_df.columns:
+            transactions_df = transactions_df.dropna(subset=["Amount"])
+            # Only remove zero amount transactions if they're clearly invalid
+            # (keep them if they might be valid like balance inquiries)
+        
+        if "Date" in transactions_df.columns:
+            transactions_df = transactions_df.dropna(subset=["Date"])
+        
+        print(f"After filtering: {transactions_df.shape} rows")
         
         # Convert each row to text for LLM context (best-effort if columns present)
         def row_to_text(row):
@@ -224,7 +568,7 @@ def upload_csv():
             amount = row["Amount"] if "Amount" in row and pd.notna(row["Amount"]) else "?"
             category = row["Category"] if "Category" in row and pd.notna(row["Category"]) else "?"
             desc = row["Description"] if "Description" in row and pd.notna(row["Description"]) else ""
-            return f"On {date} you spent {amount} on {category}: {desc}"
+            return f"On {date} you spent ₹{abs(amount):.2f} on {category}: {desc}"
         
         try:
             csv_text = "\n".join(transactions_df.apply(row_to_text, axis=1))
@@ -234,8 +578,13 @@ def upload_csv():
             # Fallback to raw CSV text
             csv_text = transactions_df.to_csv(index=False)
         
-        print("CSV upload successful!")
-        return jsonify({"message": "CSV uploaded successfully!", "columns": list(transactions_df.columns)})
+        print(f"CSV upload successful! Processed {len(transactions_df)} transactions from {bank.upper()} format")
+        return jsonify({
+            "message": f"CSV uploaded successfully! Processed {len(transactions_df)} {bank.upper()} transactions", 
+            "columns": list(transactions_df.columns),
+            "bank": bank.upper(),
+            "transaction_count": len(transactions_df)
+        })
     except Exception as e:
         print(f"CSV upload error: {e}")
         return jsonify({"message": f"Error processing CSV: {str(e)}"}), 400
@@ -252,7 +601,7 @@ def dashboard():
         print("transactions_df is empty")
         return jsonify({"error": "No data found. Please upload a CSV first."}), 400
     
-    df = _normalize_columns(transactions_df.copy())
+    df = transactions_df.copy()
     print(f"DataFrame shape: {df.shape}, columns: {df.columns.tolist()}")
     
     # Calculate dashboard statistics
@@ -298,7 +647,7 @@ def chat():
 
     user_query = (request.json or {}).get("query", "")
     # Ensure normalized and typed
-    df = _normalize_columns(transactions_df.copy())
+    df = transactions_df.copy()
 
     q = user_query.lower()
 
@@ -470,6 +819,229 @@ Answer the following question based on this data:
         meta = {"error": True}
 
     return jsonify({"response": answer, "meta": {"mode": "hybrid", "rule": "llm", **meta}})
+
+
+@app.route("/advanced-analytics", methods=["POST"])
+def advanced_analytics():
+    """Advanced data science analytics endpoint with statistical analysis."""
+    global transactions_df
+    
+    if transactions_df is None or transactions_df.empty:
+        return jsonify({"error": "No data found. Please upload a CSV first."}), 400
+    
+    df = transactions_df.copy()
+    
+    # Initialize analytics data
+    analytics_data = {}
+    
+    # 1. Statistical Summary
+    if "Amount" in df.columns:
+        amounts = df["Amount"].abs()  # Use absolute values for stats
+        analytics_data["statistics"] = {
+            "mean": float(amounts.mean()),
+            "median": float(amounts.median()),
+            "std": float(amounts.std()),
+            "min": float(amounts.min()),
+            "max": float(amounts.max()),
+            "count": int(amounts.count()),
+            "q25": float(amounts.quantile(0.25)),
+            "q75": float(amounts.quantile(0.75))
+        }
+    
+    # 2. Outlier Detection using IQR method
+    outliers = []
+    if "Amount" in df.columns:
+        amounts = df["Amount"].abs()
+        Q1 = amounts.quantile(0.25)
+        Q3 = amounts.quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        outlier_mask = (amounts < lower_bound) | (amounts > upper_bound)
+        outlier_df = df[outlier_mask].copy()
+        
+        for _, row in outlier_df.head(10).iterrows():
+            outliers.append({
+                "amount": float(row.get("Amount", 0)),
+                "description": str(row.get("Description", "Unknown")),
+                "category": str(row.get("Category", "Unknown")),
+                "date": str(row.get("Date", "Unknown"))
+            })
+    
+    analytics_data["outliers"] = outliers
+    
+    # 3. Category Trends - Average and Median by Category
+    category_trends = []
+    if "Category" in df.columns and "Amount" in df.columns:
+        cat_stats = df.groupby("Category")["Amount"].agg([
+            ('avg', lambda x: abs(x).mean()),
+            ('median', lambda x: abs(x).median()),
+            ('total', lambda x: abs(x).sum()),
+            ('count', 'count')
+        ]).sort_values('total', ascending=False)
+        
+        for cat, row in cat_stats.head(8).iterrows():
+            category_trends.append({
+                "category": str(cat),
+                "avg": float(row['avg']),
+                "median": float(row['median']),
+                "total": float(row['total']),
+                "count": int(row['count'])
+            })
+    
+    analytics_data["categoryTrends"] = category_trends
+    
+    # 4. Spending by Day of Week
+    weekday_spending = [0] * 7
+    if "Date" in df.columns and "Amount" in df.columns:
+        df["DayOfWeek"] = pd.to_datetime(df["Date"]).dt.dayofweek
+        weekday_totals = df.groupby("DayOfWeek")["Amount"].apply(lambda x: abs(x).sum())
+        for day, total in weekday_totals.items():
+            if 0 <= day < 7:
+                weekday_spending[day] = float(total)
+    
+    analytics_data["weekdaySpending"] = weekday_spending
+    
+    # 5. Spending by Hour of Day (if time information is available)
+    hourly_spending = [0] * 24
+    if "Date" in df.columns and "Amount" in df.columns:
+        try:
+            df["Hour"] = pd.to_datetime(df["Date"]).dt.hour
+            hourly_totals = df.groupby("Hour")["Amount"].apply(lambda x: abs(x).sum())
+            for hour, total in hourly_totals.items():
+                if 0 <= hour < 24:
+                    hourly_spending[hour] = float(total)
+        except:
+            # If no time information, distribute spending across business hours (9-21)
+            if "Amount" in df.columns:
+                avg_per_hour = abs(df["Amount"]).sum() / 13  # 13 business hours
+                for hour in range(9, 22):
+                    hourly_spending[hour] = float(avg_per_hour)
+    
+    analytics_data["hourlySpending"] = hourly_spending
+    
+    # 6. Frequent Merchants
+    frequent_merchants = []
+    if "Description" in df.columns and "Amount" in df.columns:
+        merchant_stats = df.groupby("Description").agg({
+            "Amount": [('total', lambda x: abs(x).sum()), 
+                       ('avg', lambda x: abs(x).mean()), 
+                       ('count', 'count')]
+        })
+        merchant_stats.columns = ['total', 'avg', 'count']
+        merchant_stats = merchant_stats.sort_values('count', ascending=False)
+        
+        for merchant, row in merchant_stats.head(8).iterrows():
+            frequent_merchants.append({
+                "merchant": str(merchant),
+                "total": float(row['total']),
+                "avg": float(row['avg']),
+                "count": int(row['count'])
+            })
+    
+    analytics_data["frequentMerchants"] = frequent_merchants
+    
+    # 7. Data Quality Metrics
+    total_records = len(df)
+    missing_values = df.isnull().sum().sum()
+    duplicates = df.duplicated().sum()
+    completeness = ((total_records * len(df.columns) - missing_values) / 
+                    (total_records * len(df.columns)) * 100) if total_records > 0 else 100
+    
+    analytics_data["dataQuality"] = {
+        "total": total_records,
+        "missing": int(missing_values),
+        "duplicates": int(duplicates),
+        "completeness": round(float(completeness), 2)
+    }
+    
+    # 8. Generate Insights
+    insights = []
+    
+    # Insight 1: Highest spending category
+    if category_trends:
+        top_cat = category_trends[0]
+        insights.append({
+            "icon": "📊",
+            "title": "Top Spending Category",
+            "text": f"You spent the most on {top_cat['category']} with ₹{top_cat['total']:.2f} across {top_cat['count']} transactions."
+        })
+    
+    # Insight 2: Most expensive transaction
+    if "Amount" in df.columns:
+        max_transaction = abs(df["Amount"]).max()
+        insights.append({
+            "icon": "💰",
+            "title": "Largest Transaction",
+            "text": f"Your largest single transaction was ₹{max_transaction:.2f}. Review large purchases to identify savings opportunities."
+        })
+    
+    # Insight 3: Spending pattern by day
+    if weekday_spending:
+        max_day_idx = weekday_spending.index(max(weekday_spending))
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        insights.append({
+            "icon": "📅",
+            "title": "Peak Spending Day",
+            "text": f"You spend the most on {days[max_day_idx]} (₹{weekday_spending[max_day_idx]:.2f}). Consider budgeting extra for this day."
+        })
+    
+    # Insight 4: Frequent merchant
+    if frequent_merchants:
+        top_merchant = frequent_merchants[0]
+        insights.append({
+            "icon": "🏪",
+            "title": "Most Frequent Merchant",
+            "text": f"You transact most often with {top_merchant['merchant']} ({top_merchant['count']} times), spending ₹{top_merchant['total']:.2f} in total."
+        })
+    
+    # Insight 5: Spending consistency
+    if "Amount" in df.columns:
+        cv = (analytics_data["statistics"]["std"] / analytics_data["statistics"]["mean"]) * 100
+        consistency = "very consistent" if cv < 50 else "moderately consistent" if cv < 100 else "highly variable"
+        insights.append({
+            "icon": "📈",
+            "title": "Spending Consistency",
+            "text": f"Your spending is {consistency} with a coefficient of variation of {cv:.1f}%. {'This is good!' if cv < 50 else 'Try to maintain consistent spending habits.'}"
+        })
+    
+    # Insight 6: Data quality
+    if analytics_data["dataQuality"]["completeness"] >= 95:
+        insights.append({
+            "icon": "✅",
+            "title": "Data Quality",
+            "text": f"Your financial data is {analytics_data['dataQuality']['completeness']:.1f}% complete with only {analytics_data['dataQuality']['missing']} missing values. Excellent data quality!"
+        })
+    else:
+        insights.append({
+            "icon": "⚠️",
+            "title": "Data Quality Warning",
+            "text": f"Your data has {analytics_data['dataQuality']['missing']} missing values ({analytics_data['dataQuality']['completeness']:.1f}% complete). Consider data cleanup for better insights."
+        })
+    
+    analytics_data["insights"] = insights
+    
+    return jsonify(analytics_data)
+
+@app.route("/test-categorization", methods=["GET"])
+def test_categorization():
+    """Test endpoint to verify categorization is working"""
+    test_descriptions = [
+        "UPI/INDIAN CLEARING/Sent using Paytm",
+        "IMPS/UPSTOXSECURITIES",
+        "UPI/NETFLIX.COM/Monthly autorenew",
+        "UPI/Flipkart/Purchase",
+        "UPI/CRED CASHBACK EARNED"
+    ]
+    results = {}
+    for desc in test_descriptions:
+        category = _categorize_kotak_transaction(desc)
+        results[desc] = category
+    return jsonify({
+        "message": "Categorization test",
+        "results": results
+    })
 
 
 if __name__ == "__main__":
