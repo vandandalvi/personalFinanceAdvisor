@@ -10,13 +10,9 @@ import statistics
 load_dotenv() 
 
 app = Flask(__name__)
-CORS(app, origins=[
-    "http://localhost:5173",  
-    "http://localhost:5174",  
-    "https://aipoweredfinanceadvisor.vercel.app",
-    "https://aipoweredfinanceadvisor-git-main-vandandalvis-projects.vercel.app",
-    "https://aipoweredfinanceadvisor-vandandalvis-projects.vercel.app"
-], supports_credentials=True)
+CORS(app, 
+     resources={r"/*": {"origins": "*"}},
+     supports_credentials=True)
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
