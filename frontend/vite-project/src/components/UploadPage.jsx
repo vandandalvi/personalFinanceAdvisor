@@ -141,7 +141,21 @@ function UploadPage() {
       }, 500);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Upload failed. Please try again.');
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      let errorMessage = 'Upload failed. ';
+      if (error.response?.status === 404) {
+        errorMessage += 'Backend not found. Please check if the backend is running.';
+      } else if (error.response?.status === 500) {
+        errorMessage += 'Server error: ' + (error.response?.data?.error || 'Internal server error');
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage += 'Cannot connect to backend. Please check your internet connection.';
+      } else {
+        errorMessage += error.response?.data?.error || error.message || 'Please try again.';
+      }
+      
+      alert(errorMessage);
     } finally {
       setUploading(false);
     }
