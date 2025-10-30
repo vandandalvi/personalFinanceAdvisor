@@ -50,15 +50,15 @@ const WelcomePage = () => {
   const handleTryDemo = async () => {
     try {
       // Fetch the demo CSV file
-      const response = await fetch('/kotak_sample.csv');
+      const response = await fetch('/axis_sample.csv');
       const csvText = await response.text();
       
       // Create a blob and file object
       const blob = new Blob([csvText], { type: 'text/csv' });
-      const file = new File([blob], 'kotak_sample.csv', { type: 'text/csv' });
+      const file = new File([blob], 'axis_sample.csv', { type: 'text/csv' });
       
       // Navigate to upload page with demo file
-      navigate('/upload', { state: { demoFile: file, bankType: 'kotak' } });
+      navigate('/upload', { state: { demoFile: file, bankType: 'axis' } });
     } catch (error) {
       console.error('Error loading demo file:', error);
       alert('Failed to load demo file. Please try manual upload.');
