@@ -1,4 +1,5 @@
 // API configuration for different environments
+// Updated: Using correct Render backend URL
 const API_BASE_URL = import.meta.env.PROD 
   ? (import.meta.env.VITE_API_URL || 'https://personalfinanceadvisor.onrender.com')
   : 'http://localhost:5000';
