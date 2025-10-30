@@ -66,7 +66,7 @@ CSV_CONTEXT_MAX_CHARS = 120000
 Edit `frontend/vite-project/src/config/api.js`:
 ```javascript
 const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://YOUR-BACKEND-URL.onrender.com'  // ← Replace with your Render URL
+  ? 'https://personalfinanceadvisor.onrender.com'
   : 'http://localhost:5000';
 ```
 
@@ -75,7 +75,7 @@ Edit `backend/app.py` (around line 12):
 ```python
 CORS(app, origins=[
     "http://localhost:5173",
-    "https://YOUR-APP-NAME.vercel.app",  # ← Replace with your Vercel URL
+    "https://aipoweredfinanceadvisor.vercel.app",
 ], supports_credentials=True)
 ```
 
@@ -117,8 +117,8 @@ Your app is now LIVE! 🎉
 6. **Multi-bank Support**: Works with SBI, Kotak, Axis
 
 **Live URLs:**
-- Frontend: `https://YOUR-APP-NAME.vercel.app`
-- Backend: `https://YOUR-BACKEND-URL.onrender.com`
+- Frontend: `https://aipoweredfinanceadvisor.vercel.app`
+- Backend: `https://personalfinanceadvisor.onrender.com`
 
 ## 🆘 Troubleshooting
 

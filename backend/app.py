@@ -14,8 +14,7 @@ CORS(app, origins=[
     "http://localhost:5173",  
     "http://localhost:5174",  
     "https://*.vercel.app",
-    "https://vandansfinancemanager.vercel.app",
-    "https://your-app-name.vercel.app"  # Update with your actual Vercel URL
+    "https://aipoweredfinanceadvisor.vercel.app"
 ], supports_credentials=True)
 
 

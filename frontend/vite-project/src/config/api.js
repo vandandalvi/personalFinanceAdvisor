@@ -1,6 +1,6 @@
 // API configuration for different environments
 const API_BASE_URL = import.meta.env.PROD 
-  ? (import.meta.env.VITE_API_URL || 'https://your-backend-url.onrender.com')  // Update with your Render URL after deployment
+  ? (import.meta.env.VITE_API_URL || 'https://personalfinanceadvisor.onrender.com')
   : 'http://localhost:5000';
 
 export const API_ENDPOINTS = {
