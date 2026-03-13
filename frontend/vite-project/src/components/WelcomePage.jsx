@@ -98,13 +98,21 @@ const WelcomePage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </button>
-            <button className="btn-secondary" onClick={handleTryDemo}>
-              <svg className="btn-icon-left" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Try Demo
-            </button>
+            <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '280px' }}>
+              <button className="btn-secondary" onClick={handleTryDemo} style={{ flex: 1, padding: '14px 15px' }}>
+                <svg className="btn-icon-left" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Demo
+              </button>
+              <a href="/mysampleacc.pdf" download="demo_kotak_statement.pdf" className="btn-secondary" style={{ flex: 1, padding: '14px 15px', textDecoration: 'none', justifyContent: 'center' }} title="Download Demo PDF">
+                <svg className="btn-icon-left" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                PDF
+              </a>
+            </div>
           </div>
         </div>
         <div className="hero-visual">
