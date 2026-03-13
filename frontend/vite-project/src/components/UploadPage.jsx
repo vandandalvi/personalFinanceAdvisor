@@ -56,24 +56,38 @@ function UploadPage() {
   };
 
   const handleFileSelect = async (selectedFile) => {
+    if (!selectedFile) return;
+
+    // Validate file type
+    const isCsv = selectedFile.type === 'text/csv' || selectedFile.name.toLowerCase().endsWith('.csv');
+    const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+    
+    if (!isCsv && !isPdf) {
+      alert("Please upload a valid .csv or .pdf file.");
+      return;
+    }
+
     setFile(selectedFile);
     setDetectedBank(null);
     setFileStructure(null);
-    
+
     // Detect bank from CSV content
-    if (selectedFile && selectedFile.type === 'text/csv') {
+    if (isCsv) {
       const detection = await detectBankFromCSV(selectedFile);
       setFileStructure(detection);
       setDetectedBank(detection.bank);
-      
+
       // Auto-select the detected bank
       if (detection.bank) {
         setSelectedBank(detection.bank);
       }
+    } else if (isPdf) {
+      // For PDFs, we can auto-detect Kotak since it's the only one implemented initially,
+      // or at least require the user to choose Kotak manually.
+      setSelectedBank('kotak');
+      setDetectedBank('kotak');
     }
-  };
-
-  const validateBankSelection = () => {
+  };  const validateBankSelection = () => {
     if (!file || !selectedBank) {
       return { valid: false, message: 'Please select both a file and your bank.' };
     }
@@ -166,7 +180,7 @@ function UploadPage() {
     e.preventDefault();
     setDragOver(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type === 'text/csv') {
+    if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.type === 'application/pdf' || droppedFile.name.endsWith('.pdf'))) {
       handleFileSelect(droppedFile);
     }
   };
@@ -221,13 +235,13 @@ function UploadPage() {
             ) : (
               <div>
                 <p style={{color: '#666', marginBottom: '20px', fontSize: '1.1rem'}}>
-                  Drag and drop your CSV file here, or
+                  Drag and drop your file (.csv or .pdf) here, or
                 </p>
                 <label className="browse-button">
                   Browse Files
                   <input
                     type="file"
-                    accept=".csv"
+                    accept="*/*"
                     onChange={(e) => handleFileSelect(e.target.files[0])}
                     style={{display: 'none'}}
                   />
