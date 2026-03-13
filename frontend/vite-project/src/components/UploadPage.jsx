@@ -135,6 +135,7 @@ function UploadPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       console.log('Upload success:', response.data);
+      sessionStorage.removeItem('aiInsights');
       // Add a small delay to ensure backend has processed the file
       setTimeout(() => {
         navigate('/dashboard');

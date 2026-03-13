@@ -49,24 +49,21 @@ const WelcomePage = () => {
 
   const handleTryDemo = async () => {
     try {
-      // Fetch the demo CSV file
-      const response = await fetch('/axis_sample.csv');
-      const csvText = await response.text();
+      // Fetch the demo PDF file
+      const response = await fetch('/mysampleacc.pdf');
+      const blob = await response.blob();
       
-      // Create a blob and file object
-      const blob = new Blob([csvText], { type: 'text/csv' });
-      const file = new File([blob], 'axis_sample.csv', { type: 'text/csv' });
-      
+      // Create a file object
+      const file = new File([blob], 'mysampleacc.pdf', { type: 'application/pdf' });
+
       // Navigate to upload page with demo file
-      navigate('/upload', { state: { demoFile: file, bankType: 'axis' } });
+      navigate('/upload', { state: { demoFile: file, bankType: 'kotak' } });
     } catch (error) {
       console.error('Error loading demo file:', error);
       alert('Failed to load demo file. Please try manual upload.');
       navigate('/upload');
     }
-  };
-
-  const handleViewDashboard = () => {
+  };  const handleViewDashboard = () => {
     navigate('/dashboard');
   };
 
@@ -84,19 +81,17 @@ const WelcomePage = () => {
             and AI-powered analysis. Upload your bank statements and get instant visibility.
           </p>
           
-          {/* Backend Status Indicator */}
-          {backendStatus !== 'ready' && (
+            {/* Backend Status Indicator */}
             <div className="backend-status">
               <div className="status-indicator">
-                <span className={`status-dot ${backendStatus === 'waking' ? 'pulsing' : ''}`}></span>
-                <span className="status-text">
-                  {backendStatus === 'checking' ? 'Connecting to server...' : 'Waking up backend (30-60s on free tier)...'}
+                <span className={`status-dot ${backendStatus === 'waking' ? 'pulsing' : ''} ${backendStatus === 'ready' ? 'ready' : ''}`}></span>
+                <span className="status-text text-white">
+                  {backendStatus === 'checking' && 'Connecting to server...'}
+                  {backendStatus === 'waking' && 'Waking up server (Wait...)'}
+                  {backendStatus === 'ready' && 'Server is Live & Ready!'}
                 </span>
               </div>
-            </div>
-          )}
-          
-          <div className="hero-buttons">
+            </div>          <div className="hero-buttons">
             <button className="btn-primary" onClick={handleGetStarted}>
               <span>Get Started</span>
               <svg className="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -35,11 +35,18 @@ function Dashboard() {
   };
 
   const fetchAiSuggestions = async () => {
+    const cachedInsights = sessionStorage.getItem('aiInsights');
+    if (cachedInsights) {
+      setAiSuggestions(cachedInsights);
+      return;
+    }
+
     try {
       const response = await axios.post(API_ENDPOINTS.chat, {
         query: 'Give me 3 quick insights about my spending patterns and top saving opportunities'
       });
       setAiSuggestions(response.data.response);
+      sessionStorage.setItem('aiInsights', response.data.response);
     } catch (error) {
       console.error('AI suggestions error:', error);
       setAiSuggestions('Unable to generate AI insights at the moment.');
@@ -114,19 +121,19 @@ function Dashboard() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="w-full px-4 py-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center min-w-[32px]">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 text-center sm:text-left">Finance Dashboard</h1>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => navigate('/advanced-analytics')}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+                className="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center space-x-2 flex-grow sm:flex-grow-0 text-sm sm:text-base"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -135,7 +142,7 @@ function Dashboard() {
               </button>
               <button
                 onClick={() => navigate('/chat')}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
+                className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center space-x-2 flex-grow sm:flex-grow-0 text-sm sm:text-base"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -144,7 +151,7 @@ function Dashboard() {
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex-grow sm:flex-grow-0 text-sm sm:text-base"
               >
                 Upload New CSV
               </button>

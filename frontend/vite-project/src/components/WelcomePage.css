@@ -85,6 +85,10 @@
   background: #FFD700;
 }
 
+.status-dot.ready {
+  background: #10B981; /* Green color for live */
+}
+
 .status-dot.pulsing {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

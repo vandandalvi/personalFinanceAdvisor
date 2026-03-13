@@ -3,6 +3,8 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 import os
+import io
+import pdfplumber
 from dotenv import load_dotenv
 import google.generativeai as genai
 import statistics
@@ -209,8 +211,8 @@ def _process_sbi_format(df: pd.DataFrame) -> pd.DataFrame:
     # Process SBI amounts - handle empty strings and combine Debit and Credit
     if "Debit" in df.columns and "Credit" in df.columns:
         # Replace empty strings with 0
-        df["Debit"] = df["Debit"].replace('', 0)
-        df["Credit"] = df["Credit"].replace('', 0)
+        df["Debit"] = df["Debit"].astype(str).str.replace(',', '', regex=False).replace('', 0)
+        df["Credit"] = df["Credit"].astype(str).str.replace(',', '', regex=False).replace('', 0)
         df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
         df["Credit"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0)
         # Expenses are debits (negative), income is credits (positive)
@@ -224,7 +226,8 @@ def _process_sbi_format(df: pd.DataFrame) -> pd.DataFrame:
     # Process dates - handle SBI date format like "1 Jan 2024"
     if "Date" in df.columns:
         try:
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce", format='%d %b %Y')
+            # use errors='raise' so it drops to except block if format mismatch
+            df["Date"] = pd.to_datetime(df["Date"], errors="raise", format='%d %b %Y')
         except:
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     
@@ -250,8 +253,8 @@ def _process_kotak_format(df: pd.DataFrame) -> pd.DataFrame:
     
     # Process Kotak amounts - handle empty strings
     if "Debit" in df.columns and "Credit" in df.columns:
-        df["Debit"] = df["Debit"].replace('', 0)
-        df["Credit"] = df["Credit"].replace('', 0)
+        df["Debit"] = df["Debit"].astype(str).str.replace(',', '', regex=False).replace('', 0)
+        df["Credit"] = df["Credit"].astype(str).str.replace(',', '', regex=False).replace('', 0)
         df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
         df["Credit"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0)
         df["Amount"] = df["Credit"] - df["Debit"]
@@ -271,7 +274,7 @@ def _process_kotak_format(df: pd.DataFrame) -> pd.DataFrame:
     # Process dates - handle Kotak date format like "01/01/2024"
     if "Date" in df.columns:
         try:
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce", format='%d/%m/%Y')
+            df["Date"] = pd.to_datetime(df["Date"], errors="raise", format='%d/%m/%Y')
         except:
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     
@@ -297,8 +300,8 @@ def _process_axis_format(df: pd.DataFrame) -> pd.DataFrame:
     
     # Process Axis amounts - handle empty strings
     if "Debit" in df.columns and "Credit" in df.columns:
-        df["Debit"] = df["Debit"].replace('', 0)
-        df["Credit"] = df["Credit"].replace('', 0)
+        df["Debit"] = df["Debit"].astype(str).str.replace(',', '', regex=False).replace('', 0)
+        df["Credit"] = df["Credit"].astype(str).str.replace(',', '', regex=False).replace('', 0)
         df["Debit"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0)
         df["Credit"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0)
         df["Amount"] = df["Credit"] - df["Debit"]
@@ -311,7 +314,7 @@ def _process_axis_format(df: pd.DataFrame) -> pd.DataFrame:
     # Process dates - handle Axis date format like "01/01/2024"
     if "Date" in df.columns:
         try:
-            df["Date"] = pd.to_datetime(df["Date"], errors="coerce", format='%d/%m/%Y')
+            df["Date"] = pd.to_datetime(df["Date"], errors="raise", format='%d/%m/%Y')
         except:
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     
@@ -521,6 +524,30 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         df["Category"] = df["Category"].astype(str)
     return df
 
+def _extract_pdf_kotak(file_stream) -> pd.DataFrame:
+    """Extract table data from Kotak PDF statements."""
+    all_data = []
+    with pdfplumber.open(file_stream) as pdf:
+        for page in pdf.pages:
+            tables = page.extract_tables()
+            for table in tables:
+                for row in table:
+                    if len(row) >= 6:
+                        # Clean up newlines in cells
+                        cleaned_row = [str(cell).replace('\\n', ' ') if cell is not None else "" for cell in row]
+                        all_data.append(cleaned_row[:6])
+    
+    if not all_data:
+        return pd.DataFrame()
+        
+    headers = ['Date', 'Description', 'Ref No', 'Debit', 'Credit', 'Balance']
+    df = pd.DataFrame(all_data, columns=headers)
+    
+    # Filter out header rows that might be repeated on multiple pages
+    df = df[~df['Date'].str.contains('DATE', na=False, case=False)]
+    
+    return df
+
 @app.get("/")
 def health():
     return jsonify({"status": "ok", "message": "Backend is running"})
@@ -539,8 +566,15 @@ def upload_csv():
         return jsonify({"message": "Bank selection required"}), 400
     
     try:
-        transactions_df = pd.read_csv(file)
-        print(f"Original CSV shape: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+        filename = file.filename.lower()
+        if filename.endswith('.pdf') and bank == 'kotak':
+            file_stream = io.BytesIO(file.read())
+            transactions_df = _extract_pdf_kotak(file_stream)
+            print(f"Extracted PDF shape: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+        else:
+            transactions_df = pd.read_csv(file)
+            print(f"Original CSV shape: {transactions_df.shape}, columns: {transactions_df.columns.tolist()}")
+            
         print(f"Processing as {bank.upper()} format")
         
         # Use bank-specific processing
