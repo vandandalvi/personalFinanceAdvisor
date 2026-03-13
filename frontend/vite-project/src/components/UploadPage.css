@@ -1,14 +1,25 @@
 /* Mobile-First Upload Page - Attractive Design */
 .upload-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0052CC 0%, #0066FF 50%, #2684FF 100%);
+  background: radial-gradient(circle at top right, #0066FF 0%, #0052CC 40%, #1A365D 100%);
   padding: 20px 15px 40px;
+}
+
+.upload-page::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CjxjaXJjbGUgY3g9IjIiIGN5PSIyIiByPSIyIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+Cjwvc3ZnPg==') repeat;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .upload-container {
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .header {
@@ -150,36 +161,62 @@
 }
 
 .upload-box {
-  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  background: white;
+  padding: 40px 30px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 }
 
 .drop-zone {
-  border: 3px dashed #d1d5db;
+  border: 2px dashed #CBD5E1;
   border-radius: 16px;
-  padding: 50px 20px;
+  padding: 60px 20px;
   text-align: center;
-  transition: all 0.3s;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #F8FAFC;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.drop-zone::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(0,102,255,0.05) 0%, rgba(38,132,255,0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.drop-zone:hover {
+  border-color: #3B82F6;
+  background: #EFF6FF;
+  transform: translateY(-2px);
+}
+
+.drop-zone:hover::before {
+  opacity: 1;
 }
 
 .drop-zone.drag-over {
-  border-color: #0052CC;
-  background: #e3f2fd;
+  border-color: #2563EB;
+  background: #EFF6FF;
   transform: scale(1.02);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
 .drop-zone svg {
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 20px;
-  color: #0052CC;
-  opacity: 0.7;
+  color: #64748B;
+  transition: transform 0.3s ease, color 0.3s ease;
+  margin-bottom: 20px;
 }
 
-.drop-zone p {
-  font-size: 1rem;
-  margin-bottom: 15px;
-  color: #5e6c84;
+.drop-zone:hover svg {
+  transform: scale(1.1);
+  color: #3B82F6;
 }
 
 .file-selected {
