@@ -237,15 +237,26 @@ function UploadPage() {
                 <p style={{color: '#666', marginBottom: '20px', fontSize: '1.1rem'}}>
                   Drag and drop your file (.csv or .pdf) here, or
                 </p>
-                <label className="browse-button">
-                  Browse Files
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <button className="browse-button" style={{ pointerEvents: 'none' }}>
+                    Browse Files
+                  </button>
                   <input
                     type="file"
                     accept="*/*"
                     onChange={(e) => handleFileSelect(e.target.files[0])}
-                    style={{display: 'none'}}
+                    title="Browse Files"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer'
+                    }}
                   />
-                </label>
+                </div>
               </div>
             )}
           </div>
