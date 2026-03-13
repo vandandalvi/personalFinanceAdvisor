@@ -248,9 +248,19 @@ const WelcomePage = () => {
               <span>Real-world spending patterns</span>
             </div>
           </div>
-          <button className="btn-demo" onClick={handleTryDemo}>
-            Launch Demo
-          </button>
+          <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
+            <button className="btn-demo" onClick={handleTryDemo}>
+              Launch Demo
+            </button>
+            <a 
+              href="/mysampleacc.pdf" 
+              download="demo_kotak_statement.pdf" 
+              className="btn-demo" 
+              style={{ background: 'white', color: '#0052CC', textDecoration: 'none', border: '2px solid #0052CC' }}
+            >
+              Download Demo PDF
+            </a>
+          </div>
         </div>
       </section>
 
