@@ -1,0 +1,175 @@
+<div class="welcome-container">
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-badge">AI-Powered Finance</div>
+      <h1 class="hero-title">
+        Personal Finance <span class="gradient-text">Manager</span>
+      </h1>
+      <p class="hero-subtitle">
+        Take control of your finances with intelligent insights, automated categorization, 
+        and AI-powered analysis. Upload your bank statements and get instant visibility.
+      </p>
+      
+        <!-- Backend Status Indicator -->
+        <div class="backend-status">
+          <div class="status-indicator">
+            <span class="status-dot" [class.pulsing]="backendStatus === 'waking'" [class.ready]="backendStatus === 'ready'"></span>
+            <span class="status-text text-white">
+              <ng-container [ngSwitch]="backendStatus">
+                <span *ngSwitchCase="'checking'">Connecting to server...</span>
+                <span *ngSwitchCase="'waking'">Waking up server (Wait...)</span>
+                <span *ngSwitchCase="'ready'">Server is Live & Ready!</span>
+              </ng-container>
+            </span>
+          </div>
+        </div>
+        <div class="hero-buttons">
+        <button class="btn-primary" (click)="handleGetStarted()">
+          <span>Get Started</span>
+          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </button>
+        <div style="display: flex; gap: 10px; width: 100%; max-width: 280px;">
+          <button class="btn-secondary" (click)="handleTryDemo()" style="flex: 1; padding: 14px 15px;">
+            <svg class="btn-icon-left" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Demo
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual">
+        <div class="visual-card card-3">
+        <div class="card-icon">🤖</div>
+        <div class="card-label">Ask,plan,chat about you spendings with financial</div>
+      </div>
+      <div class="visual-card card-2">
+        <div class="card-icon">📊</div>
+        <div class="card-label">Visual Analytics & AI Insights</div>
+      </div>
+      <div class="visual-card card-1">
+        <div class="card-icon">💰</div>
+        <div class="card-label">Smart Categorization</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Use This App Section -->
+  <section class="why-section">
+    <div class="why-content">
+      <h2 class="section-title">Why Choose Our Finance Manager?</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <div class="why-icon">⚡</div>
+          <h3>Save Time & Effort</h3>
+          <p>Stop manually tracking expenses in spreadsheets. Upload your bank statement once and get instant insights in seconds.</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">💡</div>
+          <h3>Make Better Financial Decisions</h3>
+          <p>AI-powered insights help you identify spending patterns, find savings opportunities, and plan your budget effectively.</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">🎯</div>
+          <h3>Track Your Investments</h3>
+          <p>Dedicated investment tracking for stocks, mutual funds, and trading accounts. See your portfolio at a glance.</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">📊</div>
+          <h3>Visual Financial Health</h3>
+          <p>Beautiful charts and graphs make it easy to understand where your money goes and track spending trends over time.</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">🔐</div>
+          <h3>100% Private & Secure</h3>
+          <p>Your financial data never leaves your browser session. No cloud storage, no data sharing, complete privacy guaranteed.</p>
+        </div>
+        <div class="why-card">
+          <div class="why-icon">🤝</div>
+          <h3>Works With Your Bank</h3>
+          <p>Compatible with major Indian banks including SBI, Kotak, Axis, and more. Just export your statement and upload.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features-section">
+    <h2 class="section-title">Powerful Features at Your Fingertips</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🏦</div>
+        <h3>Multi-Bank Support</h3>
+        <p>Upload statements from SBI, Kotak, Axis Bank and more. Automatic format detection.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Smart Categorization</h3>
+        <p>Automatic transaction categorization using intelligent algorithms. Investment, Food, Shopping, and more.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📈</div>
+        <h3>Visual Analytics</h3>
+        <p>Interactive charts and graphs to understand spending patterns, trends, and insights.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>AI Chat Assistant</h3>
+        <p>Ask questions about your finances and get personalized insights powered by Google Gemini AI.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Secure & Private</h3>
+        <p>Your data stays in your session. No cloud storage, complete privacy guaranteed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>Mobile First</h3>
+        <p>Fully responsive design. Manage finances on any device - phone, tablet, or desktop.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="how-it-works-section">
+    <h2 class="section-title">How It Works</h2>
+    <div class="steps-container">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Upload Statement</h3>
+        <p>Upload your bank statement CSV file or try our demo</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Auto Analysis</h3>
+        <p>AI categorizes and analyzes your transactions</p>
+      </div>
+      <div class="step-arrow">→</div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Get Insights</h3>
+        <p>View charts, trends, and chat with AI assistant</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <h2>Ready to Take Control?</h2>
+    <p>Start managing your finances smarter, not harder</p>
+    <button class="btn-cta" (click)="handleGetStarted()">
+      Get Started Free
+    </button>
+  </section>
+
+  <!-- Footer -->
+  <footer class="welcome-footer">
+    <p>Built with Love</p>
+    <p class="footer-subtitle">© 2025 vandan.services All Rights Reserved.</p>
+  </footer>
+</div>

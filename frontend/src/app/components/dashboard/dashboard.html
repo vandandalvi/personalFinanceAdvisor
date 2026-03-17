@@ -1,0 +1,186 @@
+<div class="min-h-screen bg-gray-50" *ngIf="!loading && data">
+  <!-- Header -->
+  <div class="bg-white shadow-sm border-b">
+    <div class="w-full px-4 py-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center min-w-[32px]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 text-center sm:text-left">Finance Dashboard</h1>
+        </div>
+        <div class="flex flex-wrap justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <button
+            (click)="navigate('/advanced-analytics')"
+            class="px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center space-x-2 flex-grow sm:flex-grow-0 text-sm sm:text-base"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>Advanced Analytics</span>
+          </button>
+          <button
+            (click)="navigate('/chat')"
+            class="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center space-x-2 flex-grow sm:flex-grow-0 text-sm sm:text-base"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span>Financial Advisor(AI)</span>
+          </button>
+          <button
+            (click)="navigate('/')"
+            class="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex-grow sm:flex-grow-0 text-sm sm:text-base"
+          >
+            Upload New CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="w-full px-3 py-6 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <div class="flex items-center">
+          <div class="p-2 bg-red-100 rounded-lg">
+            <svg class="w-5 h-5 lg:w-6 lg:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </div>
+          <div class="ml-3 lg:ml-4">
+            <p class="text-xs lg:text-sm font-medium text-gray-500">Total Spending</p>
+            <p class="text-lg lg:text-2xl font-bold text-gray-900">₹{{ (data.totalSpending || 0) | number }}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <div class="flex items-center">
+          <div class="p-2 bg-blue-100 rounded-lg">
+            <svg class="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l-1 4h-12l-1-4z" />
+            </svg>
+          </div>
+          <div class="ml-3 lg:ml-4">
+            <p class="text-xs lg:text-sm font-medium text-gray-500">Categories</p>
+            <p class="text-lg lg:text-2xl font-bold text-gray-900">{{ data.totalCategories || 0 }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <div class="flex items-center">
+          <div class="p-2 bg-green-100 rounded-lg">
+            <svg class="w-5 h-5 lg:w-6 lg:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+          </div>
+          <div class="ml-3 lg:ml-4">
+            <p class="text-xs lg:text-sm font-medium text-gray-500">Avg. Transaction</p>
+            <p class="text-lg lg:text-2xl font-bold text-gray-900">₹{{ (data.avgTransaction || 0) | number }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <div class="flex items-center">
+          <div class="p-2 bg-purple-100 rounded-lg">
+            <svg class="w-5 h-5 lg:w-6 lg:h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+          </div>
+          <div class="ml-3 lg:ml-4">
+            <p class="text-xs lg:text-sm font-medium text-gray-500">Transactions</p>
+            <p class="text-lg lg:text-2xl font-bold text-gray-900">{{ data.totalTransactions || 0 }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
+      <!-- Category Pie Chart -->
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Spending by Category</h3>
+        <div class="h-64 lg:h-80">
+          <canvas baseChart
+            [data]="categoryData"
+            [options]="chartOptions"
+            [type]="'pie'">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- Monthly Line Chart -->
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Monthly Spending Trend</h3>
+        <div class="h-64 lg:h-80">
+          <canvas baseChart
+            [data]="monthlyData"
+            [options]="chartOptions"
+            [type]="'line'">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- Top Merchants Chart -->
+      <div class="bg-white rounded-xl shadow-sm p-4 lg:p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Merchants</h3>
+        <div class="h-64 lg:h-80">
+          <canvas baseChart
+            [data]="topMerchantsData"
+            [options]="{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }"
+            [type]="'bar'">
+          </canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Insights -->
+    <div class="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6">
+      <div class="flex items-center mb-4">
+        <div class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center mr-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900">AI Insights</h3>
+      </div>
+      <div class="bg-white rounded-lg p-4 mb-4">
+        <p class="text-gray-700 whitespace-pre-wrap">{{ aiSuggestions }}</p>
+      </div>
+      <button
+        (click)="navigate('/chat')"
+        class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        <span>Ask More Questions</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="min-h-screen bg-gray-50 flex items-center justify-center" *ngIf="loading">
+  <div class="text-center">
+    <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
+    <p class="mt-4 text-gray-600">Analyzing your finances...</p>
+  </div>
+</div>
+
+<div class="min-h-screen bg-gray-50 flex items-center justify-center" *ngIf="!loading && !data">
+  <div class="text-center">
+    <p class="text-gray-600 mb-4">No data found. Please upload a CSV file first.</p>
+    <button
+      (click)="navigate('/')"
+      class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+    >
+      Upload CSV
+    </button>
+  </div>
+</div>

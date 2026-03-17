@@ -1,0 +1,209 @@
+<div class="advanced-analytics-page" *ngIf="!loading && analyticsData">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <div class="header-left">
+        <div class="icon-container analytics-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h1>Advanced Data Analytics</h1>
+      </div>
+      <div class="header-actions">
+        <button (click)="navigate('/dashboard')" class="btn-secondary">
+          Dashboard
+        </button>
+        <button (click)="navigate('/')" class="btn-secondary">
+          Upload New CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics-content">
+    <!-- Statistical Summary -->
+    <div class="stats-section">
+      <h2 class="section-title">📊 Statistical Summary</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon blue">📈</div>
+          <div class="stat-details">
+            <p class="stat-label">Mean Spending</p>
+            <p class="stat-value">₹{{ (analyticsData.statistics?.mean || 0) | number:'1.2-2' }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">📊</div>
+          <div class="stat-details">
+            <p class="stat-label">Median Spending</p>
+            <p class="stat-value">₹{{ (analyticsData.statistics?.median || 0) | number:'1.2-2' }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon purple">📉</div>
+          <div class="stat-details">
+            <p class="stat-label">Std Deviation</p>
+            <p class="stat-value">₹{{ (analyticsData.statistics?.std || 0) | number:'1.2-2' }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange">🔢</div>
+          <div class="stat-details">
+            <p class="stat-label">Data Points</p>
+            <p class="stat-value">{{ analyticsData.statistics?.count || 0 }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Outliers and Anomalies -->
+    <div class="outliers-section">
+      <h2 class="section-title">⚠️ Unusual Transactions (Outliers)</h2>
+      <div class="outliers-grid">
+        <ng-container *ngIf="analyticsData.outliers && analyticsData.outliers.length > 0; else noOutliers">
+          <div *ngFor="let outlier of analyticsData.outliers" class="outlier-card">
+            <div class="outlier-header">
+              <span class="outlier-badge">Outlier</span>
+              <span class="outlier-amount">₹{{ Math.abs(outlier.amount) | number:'1.2-2' }}</span>
+            </div>
+            <p class="outlier-description">{{ outlier.description }}</p>
+            <div class="outlier-meta">
+              <span>📅 {{ outlier.date }}</span>
+              <span>🏷️ {{ outlier.category }}</span>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #noOutliers>
+          <p class="no-data">No unusual transactions detected. Your spending is consistent!</p>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Spending Patterns -->
+    <div class="patterns-section">
+      <h2 class="section-title">🔍 Spending Patterns</h2>
+      <div class="charts-grid">
+        <!-- Category Trends -->
+        <div class="chart-container">
+          <h3 class="chart-title">Category Statistics</h3>
+          <div class="chart-wrapper">
+            <canvas baseChart
+              [data]="categoryTrendData"
+              [options]="{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }"
+              [type]="'bar'">
+            </canvas>
+          </div>
+        </div>
+
+        <!-- Weekday Spending -->
+        <div class="chart-container">
+          <h3 class="chart-title">Spending by Day of Week</h3>
+          <div class="chart-wrapper">
+            <canvas baseChart
+              [data]="weekdaySpendingData"
+              [options]="{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }"
+              [type]="'bar'">
+            </canvas>
+          </div>
+        </div>
+
+        <!-- Hourly Spending -->
+        <div class="chart-container full-width">
+          <h3 class="chart-title">Spending by Time of Day</h3>
+          <div class="chart-wrapper">
+            <canvas baseChart
+              [data]="hourlySpendingData"
+              [options]="{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }"
+              [type]="'line'">
+            </canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Frequency Analysis -->
+    <div class="frequency-section">
+      <h2 class="section-title">🔁 Transaction Frequency</h2>
+      <div class="frequency-grid">
+        <div *ngFor="let merchant of analyticsData.frequentMerchants" class="frequency-card">
+          <div class="frequency-header">
+            <span class="merchant-name">{{ merchant.merchant }}</span>
+            <span class="transaction-count">{{ merchant.count }}x</span>
+          </div>
+          <div class="frequency-stats">
+            <div class="stat-item">
+              <span class="stat-label">Total:</span>
+              <span class="stat-value">₹{{ merchant.total | number:'1.2-2' }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Avg:</span>
+              <span class="stat-value">₹{{ merchant.avg | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Quality -->
+    <div class="quality-section">
+      <h2 class="section-title">✅ Data Quality Report</h2>
+      <div class="quality-grid">
+        <div class="quality-card">
+          <div class="quality-icon success">✓</div>
+          <div class="quality-details">
+            <p class="quality-label">Total Records</p>
+            <p class="quality-value">{{ analyticsData.dataQuality?.total || 0 }}</p>
+          </div>
+        </div>
+        <div class="quality-card">
+          <div class="quality-icon warning">⚠️</div>
+          <div class="quality-details">
+            <p class="quality-label">Missing Values</p>
+            <p class="quality-value">{{ analyticsData.dataQuality?.missing || 0 }}</p>
+          </div>
+        </div>
+        <div class="quality-card">
+          <div class="quality-icon info">ℹ️</div>
+          <div class="quality-details">
+            <p class="quality-label">Duplicate Entries</p>
+            <p class="quality-value">{{ analyticsData.dataQuality?.duplicates || 0 }}</p>
+          </div>
+        </div>
+        <div class="quality-card">
+          <div class="quality-icon success">✓</div>
+          <div class="quality-details">
+            <p class="quality-label">Data Completeness</p>
+            <p class="quality-value">{{ analyticsData.dataQuality?.completeness || 100 }}%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Insights Summary -->
+    <div class="insights-section">
+      <h2 class="section-title">💡 Key Insights</h2>
+      <div class="insights-list">
+        <div *ngFor="let insight of analyticsData.insights" class="insight-card">
+          <div class="insight-icon">{{ insight.icon }}</div>
+          <div class="insight-content">
+            <h4 class="insight-title">{{ insight.title }}</h4>
+            <p class="insight-text">{{ insight.text }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-container" *ngIf="loading">
+  <div class="spinner"></div>
+  <p class="loading-text">Analyzing your financial data...</p>
+</div>
+
+<div class="error-container" *ngIf="!loading && !analyticsData">
+  <p>No analytics data available. Please upload a CSV file first.</p>
+  <button (click)="navigate('/')" class="upload-button">
+    Upload CSV
+  </button>
+</div>
